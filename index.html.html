@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Solstice Outfitters — SQL Practice Lab</title>
+<style>
+  :root{
+    --bg:#F2F3EF; --surface:#FFFFFF; --border:#DBDCD3; --border-strong:#C7C9BD;
+    --text:#1F2420; --text-2:#5B6058; --text-muted:#8B8F84;
+    --accent:#1F5C42; --accent-hover:#17492F; --accent-soft:#E6EFE7;
+    --info:#2C5C8A; --info-soft:#E7EEF4;
+    --danger:#A3372B; --danger-soft:#FBEAE7;
+    --warn-soft:#FBF1DD; --warn-text:#8A5A12;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#181C19; --surface:#20241F; --border:#343A32; --border-strong:#454C40;
+      --text:#EDEEE8; --text-2:#B3B6AB; --text-muted:#83897C;
+      --accent:#4C9270; --accent-hover:#5FA681; --accent-soft:#213229;
+      --info:#5C93C4; --info-soft:#1E2A33;
+      --danger:#D9756A; --danger-soft:#33201D;
+      --warn-soft:#332B18; --warn-text:#E0B15C;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.5;}
+  .topbar{background:var(--accent);color:#F2EFE4;padding:18px 22px;}
+  .topbar h1{margin:0;font-size:18px;font-weight:600;}
+  .topbar p{margin:4px 0 0;font-size:13px;color:#DCE7DE;}
+  #statusLine{font-size:12px;color:#CBE0D2;margin-top:8px;}
+  .layout{display:grid;grid-template-columns:1.25fr 1fr;gap:16px;padding:18px;max-width:1280px;margin:0 auto;}
+  @media (max-width:880px){.layout{grid-template-columns:1fr;}}
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;}
+  .section-title{font-size:13px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.04em;margin:0 0 10px;}
+  .preview-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+  .pill{font-family:var(--mono);font-size:12px;padding:5px 10px;border:1px solid var(--border-strong);border-radius:20px;background:transparent;color:var(--text-2);cursor:pointer;}
+  .pill:hover{background:var(--accent-soft);color:var(--accent);border-color:var(--accent);}
+  .schema-toggle{font-size:12px;color:var(--info);background:none;border:none;cursor:pointer;padding:0 0 10px;text-decoration:underline;}
+  .schema-box{display:grid;grid-template-columns:1fr 1fr;gap:10px;font-family:var(--mono);font-size:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;}
+  .schema-box .tbl b{color:var(--accent);}
+  .schema-box .tbl div{color:var(--text-2);}
+  textarea#sqlInput{width:100%;font-family:var(--mono);font-size:13px;padding:10px;border:1px solid var(--border-strong);border-radius:8px;background:var(--bg);color:var(--text);resize:vertical;}
+  .btn-row{display:flex;align-items:center;gap:10px;margin:10px 0;}
+  button.btn{font-size:13px;font-weight:500;padding:8px 14px;border-radius:8px;cursor:pointer;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);}
+  button.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  button.btn-primary:hover{background:var(--accent-hover);}
+  button.btn:hover{background:var(--bg);}
+  .exec-info{font-size:12px;color:var(--text-muted);font-family:var(--mono);}
+  .error-box{background:var(--danger-soft);color:var(--danger);border:1px solid var(--danger);border-radius:8px;padding:10px 12px;font-family:var(--mono);font-size:12.5px;margin-bottom:12px;white-space:pre-wrap;}
+  .results-wrap{overflow:auto;border:1px solid var(--border);border-radius:8px;max-height:420px;}
+  table.results{border-collapse:collapse;width:100%;font-family:var(--mono);font-size:12.5px;}
+  table.results th{position:sticky;top:0;background:var(--accent-soft);color:var(--accent);text-align:left;padding:7px 10px;border-bottom:1px solid var(--border);white-space:nowrap;}
+  table.results td{padding:6px 10px;border-bottom:1px solid var(--border);white-space:nowrap;color:var(--text);}
+  table.results tr:nth-child(even) td{background:var(--bg);}
+  .note{font-size:12px;color:var(--text-muted);padding:8px 2px 0;}
+  .tier h3{font-size:14px;margin:18px 0 10px;color:var(--accent);}
+  .tier:first-child h3{margin-top:0;}
+  .task-card{border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:10px;background:var(--bg);}
+  .task-context{margin:0 0 6px;font-size:12.5px;color:var(--text-2);font-style:italic;}
+  .task-ask{margin:0 0 10px;font-size:13.5px;}
+  .task-ask b{color:var(--accent);}
+  .task-actions{display:flex;gap:8px;}
+  .mini-btn{font-size:12px;padding:5px 10px;border-radius:6px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text-2);cursor:pointer;}
+  .mini-btn:hover{background:var(--info-soft);color:var(--info);border-color:var(--info);}
+  .hint-box{margin-top:10px;font-size:12.5px;background:var(--warn-soft);color:var(--warn-text);border-radius:6px;padding:8px 10px;}
+  .sol-box{margin-top:10px;}
+  .sol-box pre{font-family:var(--mono);font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px;overflow:auto;margin:0 0 8px;white-space:pre-wrap;}
+  .interp{font-size:12.5px;color:var(--text-2);background:var(--info-soft);border-radius:6px;padding:8px 10px;margin-top:8px;}
+  .progress-wrap{display:flex;align-items:center;gap:10px;margin:0 0 14px;}
+  .progress-track{flex:1;height:6px;background:var(--border);border-radius:4px;overflow:hidden;}
+  .progress-fill{height:100%;width:0%;background:var(--accent);border-radius:4px;transition:width .25s ease;}
+  .progress-text{font-size:12px;color:var(--text-2);white-space:nowrap;}
+  .progress-reset{font-size:12px;color:var(--info);background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;white-space:nowrap;}
+  .task-card.completed{border-color:var(--accent);background:var(--accent-soft);}
+  .done-row{display:flex;align-items:center;gap:7px;margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:12.5px;color:var(--text-2);cursor:pointer;user-select:none;}
+  .done-row input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;}
+  .task-card.completed .done-row{color:var(--accent);font-weight:500;}
+  .notes-box{margin-top:10px;}
+  .notes-box textarea{width:100%;font-family:var(--sans);font-size:12.5px;padding:8px;border:1px solid var(--border-strong);border-radius:6px;background:var(--surface);color:var(--text);resize:vertical;min-height:64px;}
+  .notes-status{font-size:11px;color:var(--text-muted);margin-top:4px;display:block;min-height:14px;}
+  .hidden{display:none;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>Solstice Outfitters — SQL practice lab</h1>
+  <p>A synthetic multi-region outdoor-retail company: 5 regions, 10 stores, 25 employees, 64 products, 400 customers, 3,000 orders. Query it directly below.</p>
+  <div id="statusLine">Setting up the database…</div>
+</div>
+
+<div class="layout">
+  <section class="panel">
+    <p class="section-title">Explore</p>
+    <div class="preview-row" id="previewRow"></div>
+    <button type="button" class="schema-toggle" id="schemaToggle">Show schema ▾</button>
+    <div class="schema-box hidden" id="schemaBox"></div>
+
+    <p class="section-title">Query editor</p>
+    <textarea id="sqlInput" rows="7" spellcheck="false">SELECT * FROM products LIMIT 8;</textarea>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="runBtn">Run query</button>
+      <button class="btn" id="resetBtn">Reset</button>
+      <span class="exec-info" id="execInfo"></span>
+    </div>
+    <div class="error-box hidden" id="errorBox"></div>
+    <div class="results-wrap" id="resultsWrap"></div>
+    <div class="note">Tip: Cmd/Ctrl + Enter runs the query. Everything here lives in memory — nothing you run can affect a real database, so experiment freely.</div>
+  </section>
+
+  <section class="panel" id="tasksPanel">
+    <p class="section-title">Practice tasks</p>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.6.2/sql-wasm.js"></script>
+<script>
+function mulberry32(seed){return function(){seed|=0;seed=(seed+0x6D2B79F5)|0;let t=Math.imul(seed^(seed>>>15),1|seed);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};}
+const rand = mulberry32(20260912);
+function ri(min,max){return Math.floor(rand()*(max-min+1))+min;}
+function pick(arr){return arr[Math.floor(rand()*arr.length)];}
+function pickWeighted(items,weights){const total=weights.reduce((a,b)=>a+b,0);let r=rand()*total;for(let i=0;i<items.length;i++){r-=weights[i];if(r<=0)return items[i];}return items[items.length-1];}
+function pad(n){return n<10?'0'+n:''+n;}
+function daysInMonth(y,m){return new Date(y,m+1,0).getDate();}
+function fmtDate(y,m,d){return `${y}-${pad(m+1)}-${pad(d)}`;}
+
+const REGIONS=['Pacific Northwest','Southwest','Midwest','Northeast','Southeast'];
+const FLAGSHIP_CITY={'Pacific Northwest':'Portland','Southwest':'Phoenix','Midwest':'Chicago','Northeast':'Boston','Southeast':'Atlanta'};
+const CATEGORIES=['Footwear','Outerwear','Camping Gear','Backpacks','Climbing Equipment','Apparel','Accessories','Electronics'];
+const PRODUCTS_BY_CAT={
+  'Footwear':[['Trailblazer Hiking Boot',129],['Summit Trail Runner',109],['Ridgeline Waterproof Boot',159],['Cascade Approach Shoe',99],['Alpine Mountaineering Boot',219],['Foothill Sandal',59],['Switchback Trail Shoe',89],['Glacier Insulated Boot',189]],
+  'Outerwear':[['Alpine Shell Jacket',249],['Ridgeline Down Parka',329],['Storm Guard Rain Jacket',159],['Summit Softshell Vest',119],['Highland Wool Coat',279],['Tempest Windbreaker',89],['Basecamp Insulated Jacket',199],['Frostline Puffer Coat',259]],
+  'Camping Gear':[['Basecamp 4-Person Tent',329],['Wayfarer 2-Person Tent',199],['Ember Camp Stove',79],['Driftwood Sleeping Bag',129],['Alpine 0-Degree Sleeping Bag',219],['Trailhead Camp Chair',59],['Basecamp Cook Set',69],['Nightfall Lantern',39]],
+  'Backpacks':[['Trailhead 35L Pack',149],['Summit 65L Expedition Pack',259],['Dayhike 20L Pack',79],['Ridgeline Travel Pack',189],['Basecamp Duffel',99],['Alpine Ski Pack',169],['Commuter 25L Pack',89],['Wayfarer 50L Pack',219]],
+  'Climbing Equipment':[['Granite Climbing Harness',89],['Summit Carabiner Set',39],['Crux Climbing Rope 60m',179],['Anchor Belay Device',45],['Vertex Climbing Helmet',99],['Highline Chalk Bag',19],['Ridge Quickdraw Set 6pk',69],['Talus Climbing Shoes',139]],
+  'Apparel':[['Merino Wool Base Layer',65],['Trailblazer Fleece Pullover',79],['Summit Hiking Pants',89],['Ridgeline Convertible Pants',75],['Alpine Thermal Leggings',55],['Highland Flannel Shirt',69],['Basecamp Quick-Dry Tee',35],['Switchback Hiking Shorts',45]],
+  'Accessories':[['Polarized Trail Sunglasses',79],['Insulated Steel Bottle',32],['Trailhead Wool Beanie',22],['Ridgeline Hiking Gloves',29],['Summit Trekking Poles Pair',89],['Alpine Gaiters',45],['Basecamp Camp Towel',25],['Highland Neck Gaiter',19]],
+  'Electronics':[['Trailhead GPS Watch',249],['Solar Power Bank 20000mAh',59],['Summit Headlamp 350lm',39],['Ridgeline Action Camera',199],['Basecamp Bluetooth Speaker',69],['Alpine Satellite Messenger',299],['Trailblazer Fitness Tracker',129],['Nightfall Rechargeable Lantern',45]]
+};
+const FIRST_NAMES=['James','Maria','David','Linda','Robert','Patricia','Michael','Jennifer','William','Elizabeth','Carlos','Aisha','Wei','Fatima','Noah','Emma','Liam','Olivia','Sofia','Daniel','Priya','Hassan','Grace','Lucas','Mia','Ethan','Chloe','Marcus','Nina','Tyler'];
+const LAST_NAMES=['Johnson','Smith','Garcia','Chen','Patel','Nguyen','Brown','Davis','Rodriguez','Martinez','Kim','Anderson','Taylor','Thomas','Moore','Jackson','Martin','Lee','Perez','White','Harris','Clark','Lewis','Young','Walker','Hall','Allen','King','Wright','Scott'];
+function personName(){return `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`;}
+
+let db;
+
+function buildDatabase(SQL){
+  db = new SQL.Database();
+  db.run(`
+    CREATE TABLE regions (region_id INTEGER PRIMARY KEY, region_name TEXT NOT NULL);
+    CREATE TABLE stores (store_id INTEGER PRIMARY KEY, store_name TEXT NOT NULL, region_id INTEGER NOT NULL, channel TEXT NOT NULL, opened_date TEXT NOT NULL);
+    CREATE TABLE categories (category_id INTEGER PRIMARY KEY, category_name TEXT NOT NULL);
+    CREATE TABLE products (product_id INTEGER PRIMARY KEY, product_name TEXT NOT NULL, category_id INTEGER NOT NULL, unit_cost REAL NOT NULL, unit_price REAL NOT NULL, launch_date TEXT NOT NULL);
+    CREATE TABLE employees (employee_id INTEGER PRIMARY KEY, employee_name TEXT NOT NULL, role TEXT NOT NULL, store_id INTEGER NOT NULL, hire_date TEXT NOT NULL);
+    CREATE TABLE customers (customer_id INTEGER PRIMARY KEY, customer_name TEXT NOT NULL, email TEXT NOT NULL, region_id INTEGER NOT NULL, segment TEXT NOT NULL, signup_date TEXT NOT NULL);
+    CREATE TABLE orders (order_id INTEGER PRIMARY KEY, customer_id INTEGER NOT NULL, store_id INTEGER NOT NULL, employee_id INTEGER, order_date TEXT NOT NULL, status TEXT NOT NULL);
+    CREATE TABLE order_items (order_item_id INTEGER PRIMARY KEY, order_id INTEGER NOT NULL, product_id INTEGER NOT NULL, quantity INTEGER NOT NULL, unit_price REAL NOT NULL, discount_pct REAL NOT NULL);
+  `);
+  db.run('BEGIN TRANSACTION;');
+
+  const regionIns=db.prepare('INSERT INTO regions VALUES (?,?)');
+  REGIONS.forEach((name,i)=>regionIns.run([i+1,name]));
+  regionIns.free();
+
+  const storeIns=db.prepare('INSERT INTO stores VALUES (?,?,?,?,?)');
+  let storeId=1; const stores=[];
+  REGIONS.forEach((name,i)=>{
+    const regionId=i+1;
+    const openedRetail=fmtDate(ri(2017,2021),ri(0,11),ri(1,28));
+    const retailName=`Solstice ${FLAGSHIP_CITY[name]}`;
+    stores.push({id:storeId,name:retailName,regionId,channel:'Retail'});
+    storeIns.run([storeId,retailName,regionId,'Retail',openedRetail]); storeId++;
+    const openedOnline=fmtDate(ri(2019,2021),ri(0,11),ri(1,28));
+    const onlineName=`Solstice Online (${name})`;
+    stores.push({id:storeId,name:onlineName,regionId,channel:'Online'});
+    storeIns.run([storeId,onlineName,regionId,'Online',openedOnline]); storeId++;
+  });
+  storeIns.free();
+
+  const catIns=db.prepare('INSERT INTO categories VALUES (?,?)');
+  CATEGORIES.forEach((name,i)=>catIns.run([i+1,name]));
+  catIns.free();
+
+  const prodIns=db.prepare('INSERT INTO products VALUES (?,?,?,?,?,?)');
+  let productId=1; const products=[];
+  CATEGORIES.forEach((catName,ci)=>{
+    const catId=ci+1;
+    PRODUCTS_BY_CAT[catName].forEach(([pname,price])=>{
+      const cost=Math.round(price*(0.4+rand()*0.2)*100)/100;
+      const launch=fmtDate(ri(2019,2024),ri(0,11),ri(1,28));
+      products.push({id:productId,name:pname,catId,catName,price});
+      prodIns.run([productId,pname,catId,cost,price,launch]);
+      productId++;
+    });
+  });
+  prodIns.free();
+
+  const empIns=db.prepare('INSERT INTO employees VALUES (?,?,?,?,?)');
+  let empId=1; const employees=[];
+  stores.filter(s=>s.channel==='Retail').forEach(store=>{
+    const roles=['Store Manager','Assistant Manager','Sales Associate','Sales Associate','Sales Associate'];
+    roles.forEach(role=>{
+      const hire=fmtDate(ri(2019,2024),ri(0,11),ri(1,28));
+      const name=personName();
+      employees.push({id:empId,name,role,storeId:store.id});
+      empIns.run([empId,name,role,store.id,hire]);
+      empId++;
+    });
+  });
+  empIns.free();
+
+  const custIns=db.prepare('INSERT INTO customers VALUES (?,?,?,?,?,?)');
+  const customers=[];
+  for(let i=1;i<=400;i++){
+    const regionId=ri(1,5);
+    const segment=rand()<0.15?'Business':'Consumer';
+    const name=personName();
+    const email=name.toLowerCase().replace(' ','.')+i+'@example.com';
+    const signup=fmtDate(ri(2022,2025),ri(0,11),ri(1,28));
+    customers.push({id:i,name,regionId,segment});
+    custIns.run([i,name,email,regionId,segment,signup]);
+  }
+  custIns.free();
+
+  const orderIns=db.prepare('INSERT INTO orders VALUES (?,?,?,?,?,?)');
+  const itemIns=db.prepare('INSERT INTO order_items VALUES (?,?,?,?,?,?)');
+  const monthWeights=[0.8,0.75,0.9,1.0,1.05,1.25,1.3,1.2,1.0,0.9,1.35,1.55];
+  const monthIdx=[0,1,2,3,4,5,6,7,8,9,10,11];
+  const winterMonths=new Set([9,10,11,0,1]);
+  const summerMonths=new Set([4,5,6,7]);
+  function pickProductForMonth(month){
+    const weights=products.map(p=>{
+      let w=1;
+      if(p.catName==='Outerwear'&&winterMonths.has(month))w=2.2;
+      if(p.catName==='Camping Gear'&&summerMonths.has(month))w=2.2;
+      return w;
+    });
+    return pickWeighted(products,weights);
+  }
+  let orderId=1,itemId=1;
+  for(let i=0;i<3000;i++){
+    const year=pick([2024,2025]);
+    const month=pickWeighted(monthIdx,monthWeights);
+    const day=ri(1,daysInMonth(year,month));
+    const orderDate=fmtDate(year,month,day);
+    const customer=pickWeighted(customers,customers.map(c=>c.segment==='Business'?0.6:1));
+    let store;
+    if(rand()<0.8){const sameRegion=stores.filter(s=>s.regionId===customer.regionId);store=pick(sameRegion);}
+    else{store=pick(stores);}
+    let employeeId=null;
+    if(store.channel==='Retail'){
+      const storeEmps=employees.filter(e=>e.storeId===store.id);
+      const weights=storeEmps.map(e=>e.role==='Store Manager'?3:(e.role==='Assistant Manager'?1.5:1));
+      employeeId=pickWeighted(storeEmps,weights).id;
+    }
+    let status;
+    const returnRate=store.channel==='Online'?0.15:0.06;
+    const cancelRate=store.channel==='Online'?0.03:0.02;
+    const r=rand();
+    if(r<returnRate)status='Returned'; else if(r<returnRate+cancelRate)status='Cancelled'; else status='Completed';
+    orderIns.run([orderId,customer.id,store.id,employeeId,orderDate,status]);
+    const nItems=pickWeighted([1,2,3,4],[0.35,0.35,0.2,0.1]);
+    for(let j=0;j<nItems;j++){
+      const product=pickProductForMonth(month);
+      let qty=ri(1,3);
+      if(customer.segment==='Business')qty=Math.round(qty*2.5);
+      if(customer.regionId===2)qty=Math.max(1,Math.round(qty*1.3));
+      const discRoll=rand();
+      const discount=discRoll<0.12?0.1:(discRoll<0.17?0.2:0);
+      const unitPrice=Math.round(product.price*(1-discount)*100)/100;
+      itemIns.run([itemId,orderId,product.id,qty,unitPrice,discount]);
+      itemId++;
+    }
+    orderId++;
+  }
+  orderIns.free(); itemIns.free();
+  db.run('COMMIT;');
+}
+
+const SCHEMA=[
+  ['regions','region_id, region_name'],
+  ['stores','store_id, store_name, region_id, channel, opened_date'],
+  ['categories','category_id, category_name'],
+  ['products','product_id, product_name, category_id, unit_cost, unit_price, launch_date'],
+  ['employees','employee_id, employee_name, role, store_id, hire_date'],
+  ['customers','customer_id, customer_name, email, region_id, segment, signup_date'],
+  ['orders','order_id, customer_id, store_id, employee_id, order_date, status'],
+  ['order_items','order_item_id, order_id, product_id, quantity, unit_price, discount_pct']
+];
+
+const TASKS=[
+  {tier:'Tier 1 — SELECT, WHERE, ORDER BY',items:[
+    {ctx:"Merchandising wants a quick list of low-cost items for an entry-level bundle.",ask:"List every product priced under $50, cheapest first.",hint:"Filter unit_price with a plain comparison, then sort ascending on that same column.",sql:"SELECT product_name, unit_price FROM products WHERE unit_price < 50 ORDER BY unit_price ASC;"},
+    {ctx:"Finance is closing the books on the holiday season and only wants revenue-recognized orders.",ask:"Find all orders placed in November or December 2025 with status 'Completed'.",hint:"Dates are stored as 'YYYY-MM-DD' text, which sorts and compares correctly as plain strings. Combine the date range and status filter with AND.",sql:"SELECT order_id, order_date, status FROM orders WHERE order_date >= '2025-11-01' AND order_date <= '2025-12-31' AND status = 'Completed' ORDER BY order_date;"},
+    {ctx:"Account management wants an alphabetical contact list of every B2B account.",ask:"List customers in the 'Business' segment, alphabetically by name.",hint:"One WHERE condition, one ORDER BY column.",sql:"SELECT customer_name, segment FROM customers WHERE segment = 'Business' ORDER BY customer_name ASC;"},
+    {ctx:"The catalog team is choosing hero images for the premium product page.",ask:"Find the 10 most expensive products in the catalog.",hint:"Sort descending, then cap the row count.",sql:"SELECT product_name, unit_price FROM products ORDER BY unit_price DESC LIMIT 10;"},
+    {ctx:"Customer service reviews the newest returns first thing each morning.",ask:"List all 'Returned' orders, most recent first.",hint:"Same shape as the November/December task, just one status value and the opposite sort direction.",sql:"SELECT order_id, order_date FROM orders WHERE status = 'Returned' ORDER BY order_date DESC;"},
+    {ctx:"The buyer wants to feature freshly launched items in a 'New arrivals' section.",ask:"List the 10 most recently launched products, newest first.",hint:"launch_date is text in ISO format, so sorting it descending puts the newest date first.",sql:"SELECT product_name, launch_date FROM products ORDER BY launch_date DESC LIMIT 10;"},
+    {ctx:"Loss prevention wants to review cancelled orders chronologically before escalating any patterns.",ask:"List all 'Cancelled' orders, oldest first.",hint:"Same filter shape as the returns task, opposite sort direction.",sql:"SELECT order_id, order_date FROM orders WHERE status = 'Cancelled' ORDER BY order_date ASC;"},
+    {ctx:"The web team is building the store-locator page and needs online vs physical locations grouped together.",ask:"List all store names and their channel, sorted by channel then by name.",hint:"ORDER BY accepts more than one column — ties on the first column break using the second.",sql:"SELECT store_name, channel FROM stores ORDER BY channel ASC, store_name ASC;"},
+    {ctx:"New-customer marketing wants everyone who joined in 2025 for a first-year check-in email.",ask:"List customers who signed up in 2025, most recent signup first.",hint:"Same date-range pattern as the holiday-orders task, applied to signup_date instead.",sql:"SELECT customer_name, signup_date FROM customers WHERE signup_date >= '2025-01-01' AND signup_date <= '2025-12-31' ORDER BY signup_date DESC;"},
+    {ctx:"Finance is building a status filter for a new dashboard and wants to know every value that can appear.",ask:"List every distinct order status that exists.",hint:"DISTINCT on a single column, no WHERE needed since you want every value that occurs.",sql:"SELECT DISTINCT status FROM orders;"},
+    {ctx:"The buyer is scoping the premium tier before deciding which high-end SKUs to keep pushing.",ask:"List all products priced at $200 or more, most expensive first.",hint:"Same shape as the under-$50 task, flipped comparison and sort direction.",sql:"SELECT product_name, unit_price FROM products WHERE unit_price >= 200 ORDER BY unit_price DESC;"},
+    {ctx:"HR is planning a service-awards program and needs staff ordered by seniority.",ask:"List all employees with their role and hire date, earliest hire first.",hint:"Plain ORDER BY on hire_date, ascending.",sql:"SELECT employee_name, role, hire_date FROM employees ORDER BY hire_date ASC;"}
+  ]},
+  {tier:'Tier 2 — Aggregates & GROUP BY',items:[
+    {ctx:"Merchandising wants to know which SKUs get chosen most often across orders — frequency, not total units — before a re-order meeting.",ask:"Count how many order line items reference each product_id, showing the top 10 most frequently ordered.",hint:"COUNT(*) grouped by product_id, sorted descending, capped with LIMIT.",sql:"SELECT product_id, COUNT(*) AS num_line_items FROM order_items GROUP BY product_id ORDER BY num_line_items DESC LIMIT 10;"},
+    {ctx:"Ops wants a pulse check on order health this year.",ask:"Count how many orders fall into each status.",hint:"GROUP BY status, then COUNT(*).",sql:"SELECT status, COUNT(*) AS num_orders FROM orders GROUP BY status ORDER BY num_orders DESC;"},
+    {ctx:"Marketing wants the current Consumer vs Business split before segmenting a campaign.",ask:"Count how many customers are in each segment.",hint:"Same pattern as the order-status task, different column.",sql:"SELECT segment, COUNT(*) AS num_customers FROM customers GROUP BY segment;"},
+    {ctx:"Pricing wants to know which category commands the highest average price point.",ask:"Find the average unit_price of products in each category_id, highest average first.",hint:"AVG() instead of COUNT(), then ORDER BY the aggregate itself.",sql:"SELECT category_id, ROUND(AVG(unit_price),2) AS avg_price FROM products GROUP BY category_id ORDER BY avg_price DESC;"},
+    {ctx:"Operations wants to see which stores are handling the heaviest order volume.",ask:"Count how many orders each store_id has taken, highest first.",hint:"Group by store_id, and don't forget the DESC sort.",sql:"SELECT store_id, COUNT(*) AS num_orders FROM orders GROUP BY store_id ORDER BY num_orders DESC;"},
+    {ctx:"Warehouse staffing wants one overall number, not a breakdown: how big is a typical order line, and how big does it ever get?",ask:"Find the average quantity per order line item and the largest quantity seen on any single line.",hint:"No GROUP BY needed here — you want one overall summary row, not a breakdown by category.",sql:"SELECT ROUND(AVG(quantity),2) AS avg_qty, MAX(quantity) AS max_qty FROM order_items;"},
+    {ctx:"The pricing team wants to know how many discount tiers are actually in use before deciding whether to simplify the promo structure.",ask:"Count how many order line items fall under each discount_pct value.",hint:"GROUP BY discount_pct, COUNT(*), sorted by the discount value itself so it reads like a simple tier list.",sql:"SELECT discount_pct, COUNT(*) AS num_items FROM order_items GROUP BY discount_pct ORDER BY discount_pct;"},
+    {ctx:"Regional leadership only wants to flag stores that are meaningfully over-performing on volume for a deep-dive review — not just the top of a full ranked list.",ask:"Find stores that have taken more than 320 orders, using HAVING (not WHERE).",hint:"GROUP BY store_id and COUNT(*) first, then add HAVING COUNT(*) > 320 to filter the groups themselves — WHERE can't filter on an aggregate result.",sql:"SELECT store_id, COUNT(*) AS num_orders FROM orders GROUP BY store_id HAVING COUNT(*) > 320 ORDER BY num_orders DESC;"},
+    {ctx:"Customer marketing only wants to target regions with a large enough base to justify paid social spend.",ask:"Find regions (by region_id, from the customers table) with more than 70 customers, using HAVING.",hint:"Same shape as the stores-over-320 task — GROUP BY region_id, COUNT(*), then HAVING COUNT(*) > 70.",sql:"SELECT region_id, COUNT(*) AS num_customers FROM customers GROUP BY region_id HAVING COUNT(*) > 70 ORDER BY num_customers DESC;"},
+    {ctx:"Pricing wants to know which categories span the widest range, to decide where a 'good/better/best' tiering strategy would actually make sense.",ask:"Find the minimum and maximum unit_price for each category_id.",hint:"MIN() and MAX() can sit in the same SELECT list, both driven by the same GROUP BY.",sql:"SELECT category_id, MIN(unit_price) AS min_price, MAX(unit_price) AS max_price FROM products GROUP BY category_id ORDER BY category_id;"},
+    {ctx:"Warehouse ops wants total units moved per product, independent of price, to plan restocking.",ask:"Find total quantity sold for each product_id, showing the top 15.",hint:"SUM(quantity), grouped by product_id, sorted descending, capped with LIMIT.",sql:"SELECT product_id, SUM(quantity) AS total_units FROM order_items GROUP BY product_id ORDER BY total_units DESC LIMIT 15;"},
+    {ctx:"Ops wants to know if the customer base leans Consumer or Business within each region, before deciding where to route B2B account managers.",ask:"Count how many customers exist for each combination of region_id and segment.",hint:"GROUP BY can take two columns at once — one row comes out per unique pairing.",sql:"SELECT region_id, segment, COUNT(*) AS num_customers FROM customers GROUP BY region_id, segment ORDER BY region_id, segment;"}
+  ]},
+  {tier:'Tier 3 — JOINs',items:[
+    {ctx:"Support needs a human-readable lookup: order_id alone means nothing to a customer on the phone.",ask:"List each order's date, the customer's name, and the store name it was placed at.",hint:"Two joins off orders — one to customers, one to stores — both on their id columns.",sql:"SELECT o.order_date, c.customer_name, s.store_name FROM orders o JOIN customers c ON o.customer_id=c.customer_id JOIN stores s ON o.store_id=s.store_id ORDER BY o.order_date DESC;"},
+    {ctx:"This resolves the Tier 2 itch — leadership wants actual dollars per category, not just SKU counts.",ask:"Find total revenue (quantity × unit_price) per category name, highest first.",hint:"Revenue lives in order_items, but category names live two tables away — join order_items to products, then products to categories, before grouping.",sql:"SELECT cat.category_name, ROUND(SUM(oi.quantity*oi.unit_price),2) AS revenue FROM order_items oi JOIN products p ON oi.product_id=p.product_id JOIN categories cat ON p.category_id=cat.category_id GROUP BY cat.category_name ORDER BY revenue DESC;"},
+    {ctx:"Regional VPs each want their own revenue number for the quarterly review, attributed to where the store sits.",ask:"Find total revenue per region name, based on the store's region.",hint:"Chain three joins: order_items to orders, orders to stores, stores to regions.",sql:"SELECT r.region_name, ROUND(SUM(oi.quantity*oi.unit_price),2) AS revenue FROM order_items oi JOIN orders o ON oi.order_id=o.order_id JOIN stores s ON o.store_id=s.store_id JOIN regions r ON s.region_id=r.region_id GROUP BY r.region_name ORDER BY revenue DESC;"},
+    {ctx:"HR is auditing which orders have no sales rep attached, mainly to confirm the online channel behaves as expected.",ask:"List orders with the assigned employee's name, and isolate the ones with no rep at all.",hint:"An INNER JOIN would silently drop every order with no matching employee. Use LEFT JOIN with employees on the right, then filter WHERE employee_id IS NULL.",sql:"SELECT o.order_id, e.employee_name FROM orders o LEFT JOIN employees e ON o.employee_id=e.employee_id WHERE o.employee_id IS NULL;"},
+    {ctx:"Regional managers want a leaderboard to decide who gets recognized at the next town hall.",ask:"Find each employee's total sales revenue, highest first.",hint:"Three-table join: employees to orders to order_items. Group by employee_id (not just the name) — two employees could theoretically share a name, and grouping by the surrogate key is the safer habit.",sql:"SELECT e.employee_name, e.role, ROUND(SUM(oi.quantity*oi.unit_price),2) AS revenue FROM employees e JOIN orders o ON e.employee_id=o.employee_id JOIN order_items oi ON oi.order_id=o.order_id GROUP BY e.employee_id, e.employee_name, e.role ORDER BY revenue DESC;"},
+    {ctx:"The channel team wants to settle an internal debate: does the website or the physical stores drive a bigger average basket?",ask:"For each channel, find the number of distinct orders, total revenue, and average order value.",hint:"COUNT(DISTINCT o.order_id) avoids inflating the order count when an order has multiple line items. Average order value is just total revenue divided by that distinct count — arithmetic on two aggregates in the same SELECT list, no subquery needed.",sql:"SELECT s.channel, COUNT(DISTINCT o.order_id) AS num_orders, ROUND(SUM(oi.quantity*oi.unit_price),2) AS total_revenue, ROUND(SUM(oi.quantity*oi.unit_price)*1.0/COUNT(DISTINCT o.order_id),2) AS avg_order_value FROM orders o JOIN stores s ON o.store_id=s.store_id JOIN order_items oi ON oi.order_id=o.order_id GROUP BY s.channel;"},
+    {ctx:"Merchandising wants a print-ready catalog sheet with real category names instead of IDs.",ask:"List every product name alongside its category name, grouped visually by category.",hint:"One join from products to categories on category_id, then ORDER BY the category name first so matching products sit together.",sql:"SELECT p.product_name, cat.category_name FROM products p JOIN categories cat ON p.category_id=cat.category_id ORDER BY cat.category_name, p.product_name;"},
+    {ctx:"Ops wants a staff directory showing which store and region each employee belongs to.",ask:"List each employee's name, role, store name, and region name.",hint:"Chain two joins off employees: to stores, then from stores to regions.",sql:"SELECT e.employee_name, e.role, s.store_name, r.region_name FROM employees e JOIN stores s ON e.store_id=s.store_id JOIN regions r ON s.region_id=r.region_id ORDER BY r.region_name, s.store_name;"},
+    {ctx:"Customer success wants to know which regions already have Business-segment customers, to prioritize where to hire account managers.",ask:"List the distinct region names that have at least one 'Business' segment customer.",hint:"Join customers to regions, filter on segment, then DISTINCT the region name so each region appears once regardless of how many Business customers it has.",sql:"SELECT DISTINCT r.region_name FROM customers c JOIN regions r ON c.region_id=r.region_id WHERE c.segment='Business';"},
+    {ctx:"The buyer wants to know which products to reorder for next season based on actual dollars earned.",ask:"Find total revenue for each product, showing only the top 15.",hint:"Join order_items to products, group by product, sum quantity times price, sort descending, cap with LIMIT.",sql:"SELECT p.product_name, ROUND(SUM(oi.quantity*oi.unit_price),2) AS revenue FROM order_items oi JOIN products p ON oi.product_id=p.product_id GROUP BY p.product_id, p.product_name ORDER BY revenue DESC LIMIT 15;"},
+    {ctx:"Same question, flipped — which products are barely moving and might be candidates to discontinue?",ask:"Find total revenue for each product, showing only the bottom 15.",hint:"Identical query to the top-15 task, just flip DESC to ASC.",sql:"SELECT p.product_name, ROUND(SUM(oi.quantity*oi.unit_price),2) AS revenue FROM order_items oi JOIN products p ON oi.product_id=p.product_id GROUP BY p.product_id, p.product_name ORDER BY revenue ASC LIMIT 15;"},
+    {ctx:"The online team wants to see who's ordering through the website, region by region, to evaluate a region-specific promo.",ask:"List all 'Online' orders together with the customer's name and region.",hint:"Filter on s.channel = 'Online' after joining orders to stores, customers, and regions.",sql:"SELECT o.order_id, c.customer_name, r.region_name FROM orders o JOIN stores s ON o.store_id=s.store_id JOIN customers c ON o.customer_id=c.customer_id JOIN regions r ON c.region_id=r.region_id WHERE s.channel='Online' ORDER BY o.order_id;"},
+    {ctx:"Store managers want to flag reps who are running well below the team's pace, to prioritize coaching time.",ask:"Find employees who have handled fewer than 40 orders, using JOIN + GROUP BY + HAVING together.",hint:"Join employees to orders, GROUP BY employee, COUNT(*), then HAVING COUNT(*) < 40 to isolate the low end.",sql:"SELECT e.employee_name, e.role, COUNT(o.order_id) AS num_orders FROM employees e JOIN orders o ON e.employee_id=o.employee_id GROUP BY e.employee_id, e.employee_name, e.role HAVING COUNT(o.order_id) < 40 ORDER BY num_orders ASC;"},
+    {ctx:"Ops wants every store represented in the volume report as a safety net, even a hypothetically quiet one that hasn't logged an order yet.",ask:"List every store alongside its total order count, keeping all stores even if a count were zero.",hint:"LEFT JOIN with stores on the left guarantees every store survives regardless of matches — same principle as the orders-with-no-employee task, just applied so nothing silently disappears.",sql:"SELECT s.store_name, COUNT(o.order_id) AS num_orders FROM stores s LEFT JOIN orders o ON s.store_id=o.store_id GROUP BY s.store_id, s.store_name ORDER BY num_orders DESC;"},
+    {ctx:"Leadership wants a channel-by-segment cross-tab to see whether Business customers actually prefer ordering online or in-store.",ask:"Find total revenue broken out by both channel and customer segment together.",hint:"Four-table join (order_items, orders, stores, customers), then GROUP BY two columns at once — channel and segment — same multi-column grouping idea from Tier 2.",sql:"SELECT s.channel, c.segment, ROUND(SUM(oi.quantity*oi.unit_price),2) AS revenue FROM order_items oi JOIN orders o ON oi.order_id=o.order_id JOIN stores s ON o.store_id=s.store_id JOIN customers c ON o.customer_id=c.customer_id GROUP BY s.channel, c.segment ORDER BY revenue DESC;"}
+  ]},
+  {tier:'Tier 4 — Business strategy synthesis',items:[
+    {ctx:"The category with the most revenue isn't automatically the healthiest one — it can sell a lot and get returned a lot.",ask:"Compare total revenue per category (reuse the Tier 3 query) against count of returned line items per category. Does the top revenue category also carry a disproportionate share of returns?",hint:"Join order_items → products → categories → orders, filter WHERE status = 'Returned', then group by category.",sql:"SELECT cat.category_name, COUNT(*) AS returned_items FROM order_items oi JOIN products p ON oi.product_id=p.product_id JOIN categories cat ON p.category_id=cat.category_id JOIN orders o ON oi.order_id=o.order_id WHERE o.status='Returned' GROUP BY cat.category_name ORDER BY returned_items DESC;",interp:"If one category tops both lists, that's worth flagging — sizing, product photography, or packaging in that category may deserve a review before the next buy."},
+    {ctx:"Careful — 'revenue by store region' and 'revenue by customer's home region' are genuinely different questions, since some customers order from a store outside their own region.",ask:"Find total revenue attributed to each customer's home region, and separately count how many customers live in each region. Which region generates the most revenue per customer?",hint:"For revenue, join order_items → orders → customers → regions (through customers, not stores). For the customer count, join customers to regions and COUNT(*). Divide the two results by hand.",sql:"SELECT r.region_name, ROUND(SUM(oi.quantity*oi.unit_price),2) AS revenue FROM order_items oi JOIN orders o ON oi.order_id=o.order_id JOIN customers c ON o.customer_id=c.customer_id JOIN regions r ON c.region_id=r.region_id GROUP BY r.region_name ORDER BY revenue DESC;",interp:"A region with fewer customers but higher revenue-per-customer suggests a smaller, higher-value base worth nurturing rather than a broad acquisition push."},
+    {ctx:"Sales leadership wants to know whether the smaller pool of Business accounts justifies dedicated account-management headcount.",ask:"Compare order count, total revenue, and average order value between the 'Business' and 'Consumer' segments.",hint:"Same shape as the channel comparison in Tier 3 — swap the join and GROUP BY column to customers.segment.",sql:"SELECT c.segment, COUNT(DISTINCT o.order_id) AS num_orders, ROUND(SUM(oi.quantity*oi.unit_price),2) AS total_revenue, ROUND(SUM(oi.quantity*oi.unit_price)*1.0/COUNT(DISTINCT o.order_id),2) AS avg_order_value FROM orders o JOIN customers c ON o.customer_id=c.customer_id JOIN order_items oi ON oi.order_id=o.order_id GROUP BY c.segment;",interp:"Fewer orders but a much larger basket per order is the classic B2B signature — it argues for white-glove account management over high-volume marketing spend."},
+    {ctx:"Customer experience suspects the online channel has a quality-perception problem, not just a shipping-damage problem.",ask:"Compare returned orders to total orders for each channel. Is the online return rate meaningfully higher than retail's?",hint:"Run it as two queries: total orders per channel, and returned orders per channel (add WHERE status='Returned'). Then divide by hand.",sql:"SELECT s.channel, COUNT(*) AS returned_orders FROM orders o JOIN stores s ON o.store_id=s.store_id WHERE o.status='Returned' GROUP BY s.channel;",interp:"If online returns run meaningfully hotter than retail, that points at things a store visit solves for free — fit, texture, true color — and suggests investing in sizing guides or richer photography rather than assuming a fulfillment defect."},
+    {ctx:"Merchandising is deciding which categories deserve more shelf space based on revenue earned per SKU, not just total revenue — a lean, high-earning category can be more efficient than a sprawling one.",ask:"Find total revenue and number of distinct products sold per category, plus revenue per SKU, highest efficiency first.",hint:"COUNT(DISTINCT p.product_id) counts how many different SKUs actually sold in that category; dividing revenue by that count gives an efficiency figure per category.",sql:"SELECT cat.category_name, COUNT(DISTINCT p.product_id) AS num_products_sold, ROUND(SUM(oi.quantity*oi.unit_price),2) AS revenue, ROUND(SUM(oi.quantity*oi.unit_price)*1.0/COUNT(DISTINCT p.product_id),2) AS revenue_per_sku FROM order_items oi JOIN products p ON oi.product_id=p.product_id JOIN categories cat ON p.category_id=cat.category_id GROUP BY cat.category_name ORDER BY revenue_per_sku DESC;",interp:"A category with high revenue-per-SKU is earning its shelf space efficiently; a category with many SKUs but low revenue-per-SKU may be spreading demand too thin across too many options."},
+    {ctx:"Pricing wants to know if discounting is actually driving more volume, or just eroding margin on sales that would have happened anyway.",ask:"Find total units and revenue for discounted line items (discount_pct > 0), then run it again for full-price items (discount_pct = 0) and compare.",hint:"Two near-identical queries — just flip the WHERE condition between discount_pct > 0 and discount_pct = 0 — then compare units-per-line and revenue-per-line across the two results.",sql:"SELECT COUNT(*) AS num_items, SUM(quantity) AS total_units, ROUND(SUM(quantity*unit_price),2) AS revenue FROM order_items WHERE discount_pct > 0;",interp:"If discounted lines move meaningfully more units per line without collapsing revenue, the promotion is likely earning its keep; if units barely move but revenue per line drops, the discount may just be giving away margin on sales that would have happened anyway."},
+    {ctx:"The channel team wants to know if the online return-rate gap is concentrated in specific categories, which would point at a packaging or sizing fix rather than a platform-wide problem.",ask:"Find returned line items broken out by both channel and category together, showing the worst 10 combinations.",hint:"Five-table join chain, GROUP BY two columns (channel and category name) at once, filter WHERE status = 'Returned'.",sql:"SELECT s.channel, cat.category_name, COUNT(*) AS returned_items FROM order_items oi JOIN products p ON oi.product_id=p.product_id JOIN categories cat ON p.category_id=cat.category_id JOIN orders o ON oi.order_id=o.order_id JOIN stores s ON o.store_id=s.store_id WHERE o.status='Returned' GROUP BY s.channel, cat.category_name ORDER BY returned_items DESC LIMIT 10;",interp:"If online returns cluster heavily in one or two categories rather than spreading evenly, that's a strong signal the fix is category-specific — sizing charts, fabric close-ups — rather than a general checkout or fulfillment issue."},
+    {ctx:"Store operations wants to know whether newer stores are still ramping up or already performing at parity with established ones, to set fair targets.",ask:"List each store's opened_date alongside its total order count, oldest store first.",hint:"LEFT JOIN so every store survives even a hypothetically slow one, GROUP BY the store, ORDER BY the date rather than the count.",sql:"SELECT s.store_name, s.opened_date, COUNT(o.order_id) AS num_orders FROM stores s LEFT JOIN orders o ON s.store_id=o.store_id GROUP BY s.store_id, s.store_name, s.opened_date ORDER BY s.opened_date ASC;",interp:"If order counts don't clearly track with how long a store has been open, tenure alone isn't explaining performance — something else (location, staffing, local demand) is likely the bigger driver, and targets should probably be set per store rather than on a blanket ramp-up curve."},
+    {ctx:"Finance wants to know whether the Southwest's stronger revenue-per-customer is a store-level effect or a customer-level effect, before deciding whether to invest in a second Southwest location.",ask:"Break down revenue by both region and channel together, to see whether Southwest's strength shows up in retail, online, or both.",hint:"Same four-table join as the channel-by-segment task, just group by region and channel instead.",sql:"SELECT r.region_name, s.channel, ROUND(SUM(oi.quantity*oi.unit_price),2) AS revenue FROM order_items oi JOIN orders o ON oi.order_id=o.order_id JOIN stores s ON o.store_id=s.store_id JOIN regions r ON s.region_id=r.region_id GROUP BY r.region_name, s.channel ORDER BY r.region_name, revenue DESC;",interp:"If Southwest's strength shows up evenly across both channels, it's a genuine regional demand signal worth a second physical location; if it's concentrated in one channel, the cheaper fix might be more online marketing spend there instead of opening a new store."},
+    {ctx:"The loyalty team wants to know if long-tenured customers are worth more than recent signups, before deciding whether a loyalty program is worth building at all.",ask:"Find total revenue per customer alongside their signup_date, for the top 15 customers by revenue. Do the highest spenders tend to be early signups or recent ones?",hint:"Join order_items → orders → customers, group by customer (including signup_date), sort by revenue descending, then just scan the signup_date column on the result.",sql:"SELECT c.customer_name, c.signup_date, ROUND(SUM(oi.quantity*oi.unit_price),2) AS revenue FROM order_items oi JOIN orders o ON oi.order_id=o.order_id JOIN customers c ON o.customer_id=c.customer_id GROUP BY c.customer_id, c.customer_name, c.signup_date ORDER BY revenue DESC LIMIT 15;",interp:"If the top spenders are a mix of old and new signups, tenure isn't predicting value — a loyalty program should probably reward spend and behavior rather than time-on-file."},
+    {ctx:"Before the next headcount request, leadership wants one number: does closing the revenue gap look more like hiring another manager, or developing a top associate into one?",ask:"Compare total revenue and revenue-per-employee across each employee role.",hint:"Same revenue-per-X pattern as the revenue-per-SKU task, this time dividing by COUNT(DISTINCT employee_id) within each role.",sql:"SELECT e.role, COUNT(DISTINCT e.employee_id) AS num_employees, ROUND(SUM(oi.quantity*oi.unit_price),2) AS total_revenue, ROUND(SUM(oi.quantity*oi.unit_price)*1.0/COUNT(DISTINCT e.employee_id),2) AS revenue_per_employee FROM employees e JOIN orders o ON e.employee_id=o.employee_id JOIN order_items oi ON oi.order_id=o.order_id GROUP BY e.role ORDER BY revenue_per_employee DESC;",interp:"If Store Managers post a much higher revenue-per-employee than Sales Associates, that could mean managers are absorbing walk-in sales instead of coaching the floor — worth checking whether their individual numbers are crowding out associate development, even though the team total looks healthy."}
+  ]}
+];
+
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+const TOTAL_TASKS = TASKS.reduce((sum,t)=>sum+t.items.length,0);
+const PROGRESS_KEY = 'solstice-sql-lab-progress-v1';
+let progress = {};
+
+// Uses Claude's artifact storage when this file is running inside claude.ai (persists per user,
+// private by default). Falls back to plain localStorage when window.storage isn't injected —
+// e.g. when this same file is opened standalone or hosted on GitHub Pages — so progress still
+// saves either way, just in two separate places.
+function hasCloudStorage(){ return typeof window.storage !== 'undefined' && !!window.storage; }
+
+async function loadProgress(){
+  try{
+    if(hasCloudStorage()){
+      const r = await window.storage.get(PROGRESS_KEY, false);
+      progress = (r && r.value) ? JSON.parse(r.value) : {};
+    }else if(window.localStorage){
+      const raw = localStorage.getItem(PROGRESS_KEY);
+      progress = raw ? JSON.parse(raw) : {};
+    }
+  }catch(e){
+    progress = {};
+  }
+  applyProgressToDOM();
+}
+
+async function saveProgress(){
+  try{
+    if(hasCloudStorage()){
+      await window.storage.set(PROGRESS_KEY, JSON.stringify(progress), false);
+    }else if(window.localStorage){
+      localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
+    }
+  }catch(e){
+    console.error('Could not save progress', e);
+  }
+}
+
+function updateProgressBar(){
+  const done = Object.values(progress).filter(p=>p && p.done).length;
+  const pct = Math.round((done/TOTAL_TASKS)*100);
+  const fill = document.getElementById('progressFill');
+  const text = document.getElementById('progressText');
+  if(fill) fill.style.width = pct+'%';
+  if(text) text.textContent = `${done} / ${TOTAL_TASKS} done`;
+}
+
+function applyProgressToDOM(){
+  document.querySelectorAll('.done-check').forEach(cb=>{
+    const uid = cb.dataset.uid;
+    const done = !!(progress[uid] && progress[uid].done);
+    cb.checked = done;
+    const card = document.getElementById('task-'+uid);
+    if(card) card.classList.toggle('completed', done);
+  });
+  document.querySelectorAll('.notes-input').forEach(ta=>{
+    const uid = ta.dataset.uid;
+    ta.value = (progress[uid] && progress[uid].note) || '';
+  });
+  updateProgressBar();
+}
+
+function wireProgressCheckboxes(){
+  document.querySelectorAll('.done-check').forEach(cb=>{
+    cb.addEventListener('change',()=>{
+      const uid = cb.dataset.uid;
+      progress[uid] = progress[uid] || {};
+      progress[uid].done = cb.checked;
+      const card = document.getElementById('task-'+uid);
+      if(card) card.classList.toggle('completed', cb.checked);
+      updateProgressBar();
+      saveProgress();
+    });
+  });
+  const resetBtn = document.getElementById('progressReset');
+  if(resetBtn){
+    resetBtn.addEventListener('click',()=>{
+      progress = {};
+      applyProgressToDOM();
+      saveProgress();
+    });
+  }
+}
+
+function wireNotesTextareas(){
+  document.querySelectorAll('.notes-input').forEach(ta=>{
+    const uid = ta.dataset.uid;
+    let debounceTimer = null;
+    const status = document.getElementById('notes-status-'+uid);
+    const commit = ()=>{
+      progress[uid] = progress[uid] || {};
+      progress[uid].note = ta.value;
+      saveProgress().then(()=>{
+        if(status){ status.textContent='Saved'; setTimeout(()=>{ if(status.textContent==='Saved') status.textContent=''; },1500); }
+      });
+    };
+    ta.addEventListener('input',()=>{
+      if(status) status.textContent='Saving…';
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(commit, 900);
+    });
+    ta.addEventListener('blur',()=>{
+      clearTimeout(debounceTimer);
+      commit();
+    });
+  });
+}
+
+function renderSchema(){
+  document.getElementById('schemaBox').innerHTML = SCHEMA.map(([t,cols])=>`<div class="tbl"><b>${t}</b><div>${cols}</div></div>`).join('');
+  document.getElementById('previewRow').innerHTML = SCHEMA.map(([t])=>`<button type="button" class="pill" data-tbl="${t}">${t}</button>`).join('');
+  document.querySelectorAll('.pill').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const sql = `SELECT * FROM ${btn.dataset.tbl} LIMIT 8;`;
+      document.getElementById('sqlInput').value = sql;
+      runQuery(sql);
+    });
+  });
+}
+
+function renderResults(result, ms){
+  const errorBox=document.getElementById('errorBox');
+  const wrap=document.getElementById('resultsWrap');
+  errorBox.classList.add('hidden');
+  document.getElementById('execInfo').textContent = ms!==null ? `${ms.toFixed(1)} ms` : '';
+  if(!result || !result.length){
+    wrap.innerHTML = '<div class="note">Query ran — no rows returned.</div>';
+    return;
+  }
+  const {columns, values} = result[result.length-1];
+  const capped = values.slice(0,300);
+  let html = '<table class="results"><thead><tr>' + columns.map(c=>`<th>${escapeHtml(c)}</th>`).join('') + '</tr></thead><tbody>';
+  capped.forEach(row=>{
+    html += '<tr>' + row.map(v=>`<td>${v===null?'<span style="color:var(--text-muted)">null</span>':escapeHtml(v)}</td>`).join('') + '</tr>';
+  });
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+  const note = values.length>300 ? `Showing first 300 of ${values.length} rows.` : `${values.length} row${values.length===1?'':'s'}.`;
+  document.getElementById('execInfo').textContent += `  ·  ${note}`;
+}
+
+function runQuery(sqlText){
+  const errorBox=document.getElementById('errorBox');
+  const wrap=document.getElementById('resultsWrap');
+  try{
+    const t0=performance.now();
+    const result=db.exec(sqlText);
+    const t1=performance.now();
+    renderResults(result, t1-t0);
+  }catch(e){
+    wrap.innerHTML='';
+    document.getElementById('execInfo').textContent='';
+    errorBox.textContent=e.message;
+    errorBox.classList.remove('hidden');
+  }
+}
+
+function renderTasks(){
+  const panel=document.getElementById('tasksPanel');
+  let html = '<p class="section-title">Practice tasks</p>';
+  html += `<div class="progress-wrap">
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <span class="progress-text" id="progressText">0 / ${TOTAL_TASKS} done</span>
+    <button type="button" class="progress-reset" id="progressReset">Reset</button>
+  </div>`;
+  TASKS.forEach(tier=>{
+    html += `<div class="tier"><h3>${tier.tier}</h3>`;
+    tier.items.forEach((task,i)=>{
+      const uid = tier.tier.replace(/\W+/g,'') + i;
+      html += `<div class="task-card" id="task-${uid}">
+        <p class="task-context">${escapeHtml(task.ctx)}</p>
+        <p class="task-ask"><b>Q.</b> ${escapeHtml(task.ask)}</p>
+        <div class="task-actions">
+          <button type="button" class="mini-btn hint-toggle" data-uid="${uid}">Hint</button>
+          <button type="button" class="mini-btn sol-toggle" data-uid="${uid}">Solution</button>
+          <button type="button" class="mini-btn notes-toggle" data-uid="${uid}">My insight</button>
+        </div>
+        <div class="hint-box hidden" id="hint-${uid}">${escapeHtml(task.hint)}</div>
+        <div class="sol-box hidden" id="sol-${uid}">
+          <pre><code>${escapeHtml(task.sql)}</code></pre>
+          <button type="button" class="mini-btn run-sol" data-uid="${uid}">Insert &amp; run</button>
+          ${task.interp ? `<div class="interp">${escapeHtml(task.interp)}</div>` : ''}
+        </div>
+        <div class="notes-box hidden" id="notes-${uid}">
+          <textarea class="notes-input" data-uid="${uid}" placeholder="Write your own read on this result as if it's going in a report — what's the finding, and what would you recommend?" rows="3"></textarea>
+          <span class="notes-status" id="notes-status-${uid}"></span>
+        </div>
+        <label class="done-row">
+          <input type="checkbox" class="done-check" data-uid="${uid}">
+          <span>Mark this one done</span>
+        </label>
+      </div>`;
+    });
+    html += '</div>';
+  });
+  panel.innerHTML = html;
+
+  document.querySelectorAll('.hint-toggle').forEach(btn=>btn.addEventListener('click',()=>{
+    document.getElementById('hint-'+btn.dataset.uid).classList.toggle('hidden');
+  }));
+  document.querySelectorAll('.sol-toggle').forEach(btn=>btn.addEventListener('click',()=>{
+    document.getElementById('sol-'+btn.dataset.uid).classList.toggle('hidden');
+  }));
+  document.querySelectorAll('.notes-toggle').forEach(btn=>btn.addEventListener('click',()=>{
+    document.getElementById('notes-'+btn.dataset.uid).classList.toggle('hidden');
+  }));
+}
+
+// map uid back to sql for the "Insert & run" buttons
+function wireSolutionButtons(){
+  let flat = [];
+  TASKS.forEach(tier=>{
+    tier.items.forEach((task,i)=>{
+      const uid = tier.tier.replace(/\W+/g,'') + i;
+      flat.push([uid, task.sql]);
+    });
+  });
+  document.querySelectorAll('.run-sol').forEach(btn=>{
+    const match = flat.find(([uid])=>uid===btn.dataset.uid);
+    if(!match) return;
+    btn.addEventListener('click',()=>{
+      document.getElementById('sqlInput').value = match[1];
+      runQuery(match[1]);
+      document.getElementById('sqlInput').scrollIntoView({behavior:'smooth',block:'center'});
+    });
+  });
+}
+
+document.getElementById('schemaToggle').addEventListener('click',()=>{
+  const box=document.getElementById('schemaBox');
+  box.classList.toggle('hidden');
+  document.getElementById('schemaToggle').textContent = box.classList.contains('hidden') ? 'Show schema ▾' : 'Hide schema ▴';
+});
+document.getElementById('runBtn').addEventListener('click',()=>runQuery(document.getElementById('sqlInput').value));
+document.getElementById('resetBtn').addEventListener('click',()=>{
+  document.getElementById('sqlInput').value='SELECT * FROM products LIMIT 8;';
+  document.getElementById('errorBox').classList.add('hidden');
+  document.getElementById('resultsWrap').innerHTML='';
+  document.getElementById('execInfo').textContent='';
+});
+document.getElementById('sqlInput').addEventListener('keydown',(e)=>{
+  if((e.metaKey||e.ctrlKey) && e.key==='Enter'){ runQuery(document.getElementById('sqlInput').value); }
+});
+
+renderSchema();
+renderTasks();
+wireSolutionButtons();
+wireProgressCheckboxes();
+wireNotesTextareas();
+loadProgress();
+
+initSqlJs({locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.6.2/${file}`})
+  .then(SQL=>{
+    buildDatabase(SQL);
+    document.getElementById('statusLine').textContent = 'Ready — 3,000 orders across 10 stores, 5 regions, and 64 products loaded in memory.';
+    runQuery(document.getElementById('sqlInput').value);
+  })
+  .catch(err=>{
+    document.getElementById('statusLine').textContent = 'Could not load the SQL engine — try refreshing the page.';
+    console.error(err);
+  });
+</script>
+</body>
+</html>
